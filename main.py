@@ -37,7 +37,6 @@ if not OPENAI_API_KEY:
 
 @app.get("/", response_class=HTMLResponse)
 async def index_page():
-    # Return HTML content instead of a dictionary
     return """
     <html>
         <head>
@@ -143,6 +142,7 @@ async def send_session_update(openai_ws):
     print('Sending session update:', json.dumps(session_update))
     await openai_ws.send(json.dumps(session_update))
 
-if _name_ == "_main_":
+# Fixed the _name_ special variable syntax
+if _name_ == "_main_":  # Note the double underscores
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)
