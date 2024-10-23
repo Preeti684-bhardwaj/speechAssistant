@@ -8,8 +8,12 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "main.py"
-    }
+        "src": "/incoming-call",
+        "dest": "main.py"
+      },
+      {
+        "src": "/media-stream",
+        "dest": "main.py"
+     }
   ]
 }
