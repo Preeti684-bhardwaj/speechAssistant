@@ -32,20 +32,27 @@ LOG_EVENT_TYPES = [
 
 app = FastAPI()
 
-
 if not OPENAI_API_KEY:
     raise ValueError('Missing the OpenAI API key. Please set it in the .env file.')
 
 @app.get("/", response_class=HTMLResponse)
 async def index_page():
-    return {"message": "Twilio Media Stream Server is running!"}
+    # Return HTML content instead of a dictionary
+    return """
+    <html>
+        <head>
+            <title>Twilio Media Stream Server</title>
+        </head>
+        <body>
+            <h1>Twilio Media Stream Server is running!</h1>
+        </body>
+    </html>
+    """
 
 @app.api_route("/incoming-call", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
     """Handle incoming call and return TwiML response to connect to Media Stream."""
     response = VoiceResponse()
-    # <Say> punctuation to improve text-to-speech flow
-    # response.say("Please wait while we connect your call to the A. I. voice assistant, powered by Twilio and the Open-A.I. Realtime API")
     response.pause(length=1)
     response.say("WELCOME! to HI-VOKO, start speaking ..HELLO")
     host = request.url.hostname
@@ -136,6 +143,6 @@ async def send_session_update(openai_ws):
     print('Sending session update:', json.dumps(session_update))
     await openai_ws.send(json.dumps(session_update))
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)
