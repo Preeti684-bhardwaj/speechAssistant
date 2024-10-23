@@ -3,7 +3,10 @@
     "builds": [
       {
         "src": "main.py",
-        "use": "@ardnt/vercel-python-wsgi"
+        "use": "@ardnt/vercel-python-wsgi",
+        "config": {
+          "runtime": "python3.9"  
+        }
       }
     ],
     "routes": [
