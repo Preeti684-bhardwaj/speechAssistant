@@ -13,7 +13,7 @@ load_dotenv()
 
 # Configuration
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY') # requires OpenAI Realtime API Access
-# PORT = int(os.getenv('PORT', 5050))
+PORT = int(os.getenv('PORT', 5050))
 SYSTEM_MESSAGE = (
     "आप एक मित्रवत लोन और म्यूचुअल फंड सलाहकार हैं जो हर किसी से एक करीबी दोस्त की तरह बात करते हैं। "
     "आपको हर उपयोगकर्ता की वित्तीय स्थिति और सपनों को समझना है। "
