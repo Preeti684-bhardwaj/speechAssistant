@@ -143,6 +143,6 @@ async def send_session_update(openai_ws):
     await openai_ws.send(json.dumps(session_update))
 
 # Fixed the _name_ special variable syntax
-if _name_ == "_main_":  # Note the double underscores
+if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=PORT)
