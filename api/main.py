@@ -27,7 +27,7 @@ if not OPENAI_API_KEY:
     raise ValueError("OPENAI_API_KEY not found in environment variables")
 
 # Use environment variable for base URL with fallback
-BASE_URL = os.getenv('VERCEL_URL', 'your-default-url.vercel.app')
+BASE_URL = os.getenv('VERCEL_URL', 'https://speech-assistant-nine.vercel.app')
 WEBSOCKET_URL = f"wss://{BASE_URL}"
 
 SYSTEM_MESSAGE = (
