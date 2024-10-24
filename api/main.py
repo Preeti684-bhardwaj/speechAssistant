@@ -13,7 +13,7 @@ import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(_name_)
 
 load_dotenv()
 
@@ -21,6 +21,10 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 if not OPENAI_API_KEY:
     raise ValueError("OPENAI_API_KEY not found in environment variables")
+
+# Hardcoded base URL
+BASE_URL = "https://speech-assistant-nine.vercel.app"
+WEBSOCKET_URL = BASE_URL.replace('https://', 'wss://')
 
 SYSTEM_MESSAGE = (
     "आप एक मित्रवत लोन और म्यूचुअल फंड सलाहकार हैं जो हर किसी से एक करीबी दोस्त की तरह बात करते हैं। "
@@ -66,6 +70,7 @@ async def health_check():
     return {
         "status": "healthy",
         "openai_key_configured": bool(OPENAI_API_KEY),
+        "base_url": BASE_URL
     }
 
 @app.get("/api", response_class=HTMLResponse)
@@ -80,20 +85,19 @@ async def handle_incoming_call(request: Request):
         response.pause(length=1)
         response.say("WELCOME! to HI-VOKO, start speaking ..HELLO")
         
-        # Get the request base URL for WebSocket connection
-        base_url = str(request.base_url)
-        if base_url.startswith('http://'):
-            base_url = base_url.replace('http://', 'https://', 1)
-        
-        logger.info(f"Setting up WebSocket connection at base URL: {base_url}")
+        # Use the hardcoded URL for the stream
+        stream_url = f"{WEBSOCKET_URL}/api/media-stream"
+        logger.info(f"Setting up stream connection with URL: {stream_url}")
         
         connect = Connect()
-        stream_url = f"{base_url}api/media-stream"
         connect.stream(url=stream_url)
         response.append(connect)
         
-        logger.info(f"TwiML response created with stream URL: {stream_url}")
-        return HTMLResponse(content=str(response), media_type="application/xml")
+        # Log the full TwiML for debugging
+        twiml_response = str(response)
+        logger.info(f"Generated TwiML response: {twiml_response}")
+        
+        return HTMLResponse(content=twiml_response, media_type="application/xml")
     except Exception as e:
         logger.error(f"Error in handle_incoming_call: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
