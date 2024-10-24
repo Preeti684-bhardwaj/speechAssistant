@@ -12,7 +12,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY') # requires OpenAI Realtime API Access
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # requires OpenAI Realtime API Access
+PORT = int(os.getenv('PORT', 5050))  # Set default port to 5050
 SYSTEM_MESSAGE = (
     "आप एक मित्रवत लोन और म्यूचुअल फंड सलाहकार हैं जो हर किसी से एक करीबी दोस्त की तरह बात करते हैं। "
     "आपको हर उपयोगकर्ता की वित्तीय स्थिति और सपनों को समझना है। "
@@ -31,7 +32,6 @@ LOG_EVENT_TYPES = [
 
 app = FastAPI()
 
-
 if not OPENAI_API_KEY:
     raise ValueError('Missing the OpenAI API key. Please set it in the .env file.')
 
@@ -43,8 +43,6 @@ async def index_page():
 async def handle_incoming_call(request: Request):
     """Handle incoming call and return TwiML response to connect to Media Stream."""
     response = VoiceResponse()
-    # <Say> punctuation to improve text-to-speech flow
-    # response.say("Please wait while we connect your call to the A. I. voice assistant, powered by Twilio and the Open-A.I. Realtime API")
     response.pause(length=1)
     response.say("WELCOME! to HI-VOKO, start speaking ..HELLO")
     host = request.url.hostname
@@ -135,6 +133,6 @@ async def send_session_update(openai_ws):
     print('Sending session update:', json.dumps(session_update))
     await openai_ws.send(json.dumps(session_update))
 
-if __name__ == "__main__":
+if __name__ == "_main_":
     import uvicorn
-    uvicorn.run(app, host="106.51.90.72", port=101)
+    uvicorn.run(app, host="192.168.1.33", port=5050)
