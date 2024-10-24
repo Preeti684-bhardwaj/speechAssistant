@@ -79,7 +79,6 @@ async def send_session_update(openai_ws):
             if attempt == max_retries - 1:
                 raise
 
-
 @app.get("/api/health")
 async def health_check():
     """Enhanced health check endpoint"""
