@@ -1,26 +1,25 @@
+# api/index.py
+from fastapi import FastAPI, WebSocket, Request
+from fastapi.responses import HTMLResponse
+from fastapi.websockets import WebSocketDisconnect
+from twilio.twiml.voice_response import VoiceResponse, Connect, Say, Stream
 import os
 import json
 import base64
 import asyncio
 import websockets
-from fastapi import FastAPI, WebSocket, Request
-from fastapi.responses import HTMLResponse
-from fastapi.websockets import WebSocketDisconnect
-from twilio.twiml.voice_response import VoiceResponse, Connect, Say, Stream
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Configuration
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY') # requires OpenAI Realtime API Access
-PORT = int(os.getenv('PORT', 5050))
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 SYSTEM_MESSAGE = (
     "आप एक मित्रवत लोन और म्यूचुअल फंड सलाहकार हैं जो हर किसी से एक करीबी दोस्त की तरह बात करते हैं। "
     "आपको हर उपयोगकर्ता की वित्तीय स्थिति और सपनों को समझना है। "
     "मानवीय स्पर्श के साथ सरल भाषा में बात करें जैसे आप उनके पुराने दोस्त हैं।"
     "हर जवाब के अंत में एक प्रासंगिक सवाल जरूर पूछें जो आगे की बातचीत को बढ़ावा दे।"
     "जवाब 30 शब्दों से ज्यादा न हों।"
-
     "यदि कोई प्रश्न लोन या म्यूचुअल फंड से संबंधित नहीं है, तो विनम्रता से कहें - 'माफ़ कीजिए, यह मेरी विशेषज्ञता का क्षेत्र नहीं है।'"
 )
 VOICE = 'alloy'
@@ -32,35 +31,49 @@ LOG_EVENT_TYPES = [
 
 app = FastAPI()
 
-if not OPENAI_API_KEY:
-    raise ValueError('Missing the OpenAI API key. Please set it in the .env file.')
+async def send_session_update(openai_ws):
+    """Send session update to OpenAI WebSocket."""
+    session_update = {
+        "type": "session.update",
+        "session": {
+            "turn_detection": {"type": "server_vad"},
+            "input_audio_format": "g711_ulaw",
+            "output_audio_format": "g711_ulaw",
+            "voice": VOICE,
+            "instructions": SYSTEM_MESSAGE,
+            "modalities": ["text", "audio"],
+            "temperature": 0.8,
+        }
+    }
+    print('Sending session update:', json.dumps(session_update))
+    await openai_ws.send(json.dumps(session_update))
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/api/health")
+async def health_check():
+    return {"status": "healthy"}
+
+@app.get("/api", response_class=HTMLResponse)
 async def index_page():
-    return """
-    <html>
-        <head>
-            <title>Twilio Media Stream Server</title>
-        </head>
-        <body>
-            <h1>Twilio Media Stream Server is running!</h1>
-        </body>
-    </html>
-    """
+    return {"message": "Twilio Media Stream Server is running!"}
 
-@app.api_route("/incoming-call", methods=["GET", "POST"])
+@app.api_route("/api/incoming-call", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
     """Handle incoming call and return TwiML response to connect to Media Stream."""
     response = VoiceResponse()
     response.pause(length=1)
     response.say("WELCOME! to HI-VOKO, start speaking ..HELLO")
-    host = request.url.hostname
+    
+    # Use the request's base URL for the WebSocket connection
+    host = request.base_url
+    if host.scheme == 'http':
+        host = host.replace(scheme='https')
+    
     connect = Connect()
-    connect.stream(url=f'wss://{host}/media-stream')
+    connect.stream(url=f'{host}api/media-stream')
     response.append(connect)
     return HTMLResponse(content=str(response), media_type="application/xml")
 
-@app.websocket("/media-stream")
+@app.websocket("/api/media-stream")
 async def handle_media_stream(websocket: WebSocket):
     """Handle WebSocket connections between Twilio and OpenAI."""
     print("Client connected")
@@ -77,7 +90,6 @@ async def handle_media_stream(websocket: WebSocket):
         stream_sid = None
 
         async def receive_from_twilio():
-            """Receive audio data from Twilio and send it to the OpenAI Realtime API."""
             nonlocal stream_sid
             try:
                 async for message in websocket.iter_text():
@@ -97,7 +109,6 @@ async def handle_media_stream(websocket: WebSocket):
                     await openai_ws.close()
 
         async def send_to_twilio():
-            """Receive events from the OpenAI Realtime API, send audio back to Twilio."""
             nonlocal stream_sid
             try:
                 async for openai_message in openai_ws:
@@ -107,7 +118,6 @@ async def handle_media_stream(websocket: WebSocket):
                     if response['type'] == 'session.updated':
                         print("Session updated successfully:", response)
                     if response['type'] == 'response.audio.delta' and response.get('delta'):
-                        # Audio from OpenAI
                         try:
                             audio_payload = base64.b64encode(base64.b64decode(response['delta'])).decode('utf-8')
                             audio_delta = {
@@ -124,25 +134,3 @@ async def handle_media_stream(websocket: WebSocket):
                 print(f"Error in send_to_twilio: {e}")
 
         await asyncio.gather(receive_from_twilio(), send_to_twilio())
-
-async def send_session_update(openai_ws):
-    """Send session update to OpenAI WebSocket."""
-    session_update = {
-        "type": "session.update",
-        "session": {
-            "turn_detection": {"type": "server_vad"},
-            "input_audio_format": "g711_ulaw",
-            "output_audio_format": "g711_ulaw",
-            "voice": VOICE,
-            "instructions": SYSTEM_MESSAGE,
-            "modalities": ["text", "audio"],
-            "temperature": 0.8,
-        }
-    }
-    print('Sending session update:', json.dumps(session_update))
-    await openai_ws.send(json.dumps(session_update))
-
-# Fixed the _name_ special variable syntax
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
